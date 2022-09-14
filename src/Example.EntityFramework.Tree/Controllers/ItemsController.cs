@@ -82,17 +82,15 @@ public class ItemsController : ApiControllerBase
     /// Get item information
     /// </summary>
     /// <param name="id"></param>
-    /// <param name="languageCode"></param>
     /// <returns></returns>
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetItem([FromRoute] Guid id, string languageCode = "en")
+    public async Task<IActionResult> GetItem([FromRoute] Guid id)
     {
         var item = await dbContext.Items
             .Include(x => x.Children.OrderBy(child => child.Order))
                 .ThenInclude(x => x.Children.OrderBy(child => child.Order))
                     .ThenInclude(x => x.Children.OrderBy(child => child.Order))
             .Where(x => x.Id == id)
-            .Where(x => x.LanguageCode == languageCode)
             .OrderBy(x => x.Order)
             .Select(x => new ItemModel
             {
@@ -110,17 +108,15 @@ public class ItemsController : ApiControllerBase
     /// Get sub items
     /// </summary>
     /// <param name="parentId"></param>
-    /// <param name="languageCode"></param>
     /// <returns></returns>
     [HttpGet("{parentId:guid}/subitems")]
-    public async Task<IActionResult> GetSubItems([FromRoute] Guid parentId, string languageCode = "en")
+    public async Task<IActionResult> GetSubItems([FromRoute] Guid parentId)
     {
         var items = await dbContext.Items
             .Include(x => x.Children.OrderBy(child => child.Order))
                 .ThenInclude(x => x.Children.OrderBy(child => child.Order))
                     .ThenInclude(x => x.Children.OrderBy(child => child.Order))
             .Where(x => x.ParentId == parentId)
-            .Where(x => x.LanguageCode == languageCode)
             .OrderBy(x => x.Order)
             .Select(x => new ItemModel
             {
@@ -283,7 +279,7 @@ public class ItemsController : ApiControllerBase
     /// <param name="model"></param>
     /// <returns></returns>
     /// <exception cref="ApiException"></exception>
-    [HttpPatch("{id:Guid}")]
+    [HttpPut("{id:Guid}")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateItemModel model)
     {
         Item? parentItem = null;
