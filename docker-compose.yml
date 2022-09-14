@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile # 빌드 파일
-    image: bbonkr/Example.EntityFramework.Tree:latest # 도커 이미지 명칭
+    image: bbonkr/example.entityframework.tree:latest # 도커 이미지 명칭
     container_name: Example.EntityFramework.Tree # 컨테이너 명칭
     restart: always
     ports:
@@ -16,9 +16,8 @@ services:
       - DOTNET_RUNNING_IN_CONTAINER=true
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Default=<database connection string here>
-    volumes:
-      - "${DESTINATION_PATH}:/app/images"
-      - "${THUMBNAIL_PATH}:/app/thumbnails"
+      - Tree__MaxLevel=3
+      - Tree__TopLevelItemsCount=5
     network_mode: bridge
     # networks:
     #   - app-network

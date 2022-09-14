@@ -3,11 +3,13 @@ using AutoMapper;
 using Example.EntityFramework.Tree.Data;
 using Example.EntityFramework.Tree.Entities;
 using Example.EntityFramework.Tree.Models;
+using Example.EntityFramework.Tree.Options;
 using kr.bbon.AspNetCore;
 using kr.bbon.AspNetCore.Mvc;
 using kr.bbon.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Example.EntityFramework.Tree.Controllers;
 
@@ -18,17 +20,15 @@ namespace Example.EntityFramework.Tree.Controllers;
 [Produces("application/json")]
 public class ItemsController : ApiControllerBase
 {
-    private const int MAX_LEVEL = 3;
-    private const int TOP_LEVEL_ITEM_LIMIT = 5;
-
-    public ItemsController(AppDbContext dbContext, IMapper mapper)
+    public ItemsController(AppDbContext dbContext, IMapper mapper, IOptionsMonitor<TreeOptions> treeOptionsAccessor)
     {
         this.dbContext = dbContext;
         this.mapper = mapper;
+        treeOptions = treeOptionsAccessor.CurrentValue ?? new TreeOptions();
     }
 
     /// <summary>
-    /// Get all root items
+    /// Get all items
     /// </summary>
     /// <returns></returns>
     [HttpGet]
@@ -72,19 +72,48 @@ public class ItemsController : ApiControllerBase
                 }).ToList(),
 
             })
+            .AsNoTracking()
             .ToListAsync();
 
         return Ok(items);
     }
 
     /// <summary>
-    /// Get items
+    /// Get item information
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="languageCode"></param>
+    /// <returns></returns>
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetItem([FromRoute] Guid id, string languageCode = "en")
+    {
+        var item = await dbContext.Items
+            .Include(x => x.Children.OrderBy(child => child.Order))
+                .ThenInclude(x => x.Children.OrderBy(child => child.Order))
+                    .ThenInclude(x => x.Children.OrderBy(child => child.Order))
+            .Where(x => x.Id == id)
+            .Where(x => x.LanguageCode == languageCode)
+            .OrderBy(x => x.Order)
+            .Select(x => new ItemModel
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Order = x.Order,
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        return Ok(item);
+    }
+
+    /// <summary>
+    /// Get sub items
     /// </summary>
     /// <param name="parentId"></param>
     /// <param name="languageCode"></param>
     /// <returns></returns>
-    [HttpGet("{parentId}")]
-    public async Task<IActionResult> GetItem([FromRoute] Guid parentId, string languageCode = "en")
+    [HttpGet("{parentId:guid}/subitems")]
+    public async Task<IActionResult> GetSubItems([FromRoute] Guid parentId, string languageCode = "en")
     {
         var items = await dbContext.Items
             .Include(x => x.Children.OrderBy(child => child.Order))
@@ -167,9 +196,9 @@ public class ItemsController : ApiControllerBase
                         .Where(x => x.ParentId == null && x.LanguageCode == model.LanguageCode)
                         .CountAsync();
 
-                    if (topLevelItems >= TOP_LEVEL_ITEM_LIMIT)
+                    if (topLevelItems >= treeOptions.TopLevelItemsCount)
                     {
-                        throw new ApiException(StatusCodes.Status404NotFound, $"Top level items must less than {TOP_LEVEL_ITEM_LIMIT + 1} items");
+                        throw new ApiException(StatusCodes.Status404NotFound, $"Top level items must less than {treeOptions.TopLevelItemsCount + 1} items");
                     }
                 }
 
@@ -186,9 +215,9 @@ public class ItemsController : ApiControllerBase
                     ParentId = parentItemId,
                 };
 
-                if (newItem.Level > MAX_LEVEL)
+                if (newItem.Level > treeOptions.MaxLevel)
                 {
-                    throw new ApiException(StatusCodes.Status406NotAcceptable, $"Item depth must be less than {MAX_LEVEL + 1}");
+                    throw new ApiException(StatusCodes.Status406NotAcceptable, $"Item depth must be less than {treeOptions.MaxLevel + 1}");
                 }
 
                 var added = dbContext.Items.Add(newItem);
@@ -288,9 +317,9 @@ public class ItemsController : ApiControllerBase
                         .Where(x => x.ParentId == null && x.LanguageCode == model.LanguageCode)
                         .CountAsync();
 
-                    if (topLevelItems >= TOP_LEVEL_ITEM_LIMIT)
+                    if (topLevelItems >= treeOptions.TopLevelItemsCount)
                     {
-                        throw new ApiException(StatusCodes.Status404NotFound, $"Top level items must less than {TOP_LEVEL_ITEM_LIMIT + 1} items");
+                        throw new ApiException(StatusCodes.Status404NotFound, $"Top level items must less than {treeOptions.TopLevelItemsCount + 1} items");
                     }
                 }
 
@@ -317,9 +346,9 @@ public class ItemsController : ApiControllerBase
                 updateItem.ParentId = parentItemId;
 
 
-                if (updateItem.Level > MAX_LEVEL)
+                if (updateItem.Level > treeOptions.MaxLevel)
                 {
-                    throw new ApiException(StatusCodes.Status406NotAcceptable, $"Item depth must be less than {MAX_LEVEL + 1}");
+                    throw new ApiException(StatusCodes.Status406NotAcceptable, $"Item depth must be less than {treeOptions.MaxLevel + 1}");
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -452,5 +481,6 @@ public class ItemsController : ApiControllerBase
 
     private readonly AppDbContext dbContext;
     private readonly IMapper mapper;
+    private readonly TreeOptions treeOptions;
 }
 
