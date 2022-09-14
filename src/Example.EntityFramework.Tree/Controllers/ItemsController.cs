@@ -5,8 +5,10 @@ using Example.EntityFramework.Tree.Entities;
 using Example.EntityFramework.Tree.Models;
 using Example.EntityFramework.Tree.Options;
 using kr.bbon.AspNetCore;
+using kr.bbon.AspNetCore.Models;
 using kr.bbon.AspNetCore.Mvc;
 using kr.bbon.Core;
+using kr.bbon.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -20,11 +22,15 @@ namespace Example.EntityFramework.Tree.Controllers;
 [Produces("application/json")]
 public class ItemsController : ApiControllerBase
 {
-    public ItemsController(AppDbContext dbContext, IMapper mapper, IOptionsMonitor<TreeOptions> treeOptionsAccessor)
+    public ItemsController(AppDbContext dbContext,
+        IMapper mapper,
+        IOptionsMonitor<TreeOptions> treeOptionsAccessor,
+        ILogger<ItemsController> logger)
     {
         this.dbContext = dbContext;
         this.mapper = mapper;
         treeOptions = treeOptionsAccessor.CurrentValue ?? new TreeOptions();
+        this.logger = logger;
     }
 
     /// <summary>
@@ -32,6 +38,7 @@ public class ItemsController : ApiControllerBase
     /// </summary>
     /// <returns></returns>
     [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<ItemModel>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllItems(string languageCode = "en")
     {
         var items = await dbContext.Items
@@ -45,32 +52,36 @@ public class ItemsController : ApiControllerBase
             {
                 Id = x.Id,
                 Name = x.Name,
+                Url = x.Url,
                 Order = x.Order,
-                Children = x.Children.Select(c1 => new ItemModel
+                SubItems = x.Children.OrderBy(c1 => c1.Order).Select(c1 => new ItemModel
                 {
                     Id = c1.Id,
                     Name = c1.Name,
+                    Url = c1.Url,
                     Order = c1.Order,
-                    Children = c1.Children.Select(c2 => new ItemModel
+                    SubItems = c1.Children.OrderBy(c2 => c2.Order).Select(c2 => new ItemModel
                     {
                         Id = c2.Id,
                         Name = c2.Name,
+                        Url = c2.Url,
                         Order = c2.Order,
-                        Children = c2.Children.Select(c3 => new ItemModel
+                        SubItems = c2.Children.OrderBy(c3 => c3.Order).Select(c3 => new ItemModel
                         {
                             Id = c3.Id,
                             Name = c3.Name,
+                            Url = c3.Url,
                             Order = c3.Order,
-                            //Children = c3.Children.Select(c4 => new ItemModel
-                            //{
-                            //    Id = c4.Id,
-                            //    Name = c4.Name,
-                            //    Order = c4.Order,
-                            //}).ToList(),
+                            SubItems = c3.Children.OrderBy(c4 => c4.Order).Select(c4 => new ItemModel
+                            {
+                                Id = c4.Id,
+                                Name = c4.Name,
+                                Url = c4.Url,
+                                Order = c4.Order,
+                            }).ToList(),
                         }).ToList()
                     }).ToList(),
                 }).ToList(),
-
             })
             .AsNoTracking()
             .ToListAsync();
@@ -84,22 +95,27 @@ public class ItemsController : ApiControllerBase
     /// <param name="id"></param>
     /// <returns></returns>
     [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(ItemModel), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetItem([FromRoute] Guid id)
     {
         var item = await dbContext.Items
-            .Include(x => x.Children.OrderBy(child => child.Order))
-                .ThenInclude(x => x.Children.OrderBy(child => child.Order))
-                    .ThenInclude(x => x.Children.OrderBy(child => child.Order))
             .Where(x => x.Id == id)
             .OrderBy(x => x.Order)
             .Select(x => new ItemModel
             {
                 Id = x.Id,
                 Name = x.Name,
+                Url = x.Url,
                 Order = x.Order,
             })
             .AsNoTracking()
             .FirstOrDefaultAsync();
+
+        if (item == null)
+        {
+            throw new ApiException(StatusCodes.Status404NotFound, "Item does not find");
+        }
 
         return Ok(item);
     }
@@ -110,40 +126,47 @@ public class ItemsController : ApiControllerBase
     /// <param name="parentId"></param>
     /// <returns></returns>
     [HttpGet("{parentId:guid}/subitems")]
+    [ProducesResponseType(typeof(IEnumerable<ItemModel>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSubItems([FromRoute] Guid parentId)
     {
         var items = await dbContext.Items
             .Include(x => x.Children.OrderBy(child => child.Order))
                 .ThenInclude(x => x.Children.OrderBy(child => child.Order))
                     .ThenInclude(x => x.Children.OrderBy(child => child.Order))
+                        .ThenInclude(x => x.Children.OrderBy(child => child.Order))
             .Where(x => x.ParentId == parentId)
             .OrderBy(x => x.Order)
             .Select(x => new ItemModel
             {
                 Id = x.Id,
                 Name = x.Name,
+                Url = x.Url,
                 Order = x.Order,
-                Children = x.Children.Select(c1 => new ItemModel
+                SubItems = x.Children.OrderBy(c1 => c1.Order).Select(c1 => new ItemModel
                 {
                     Id = c1.Id,
                     Name = c1.Name,
+                    Url = c1.Url,
                     Order = c1.Order,
-                    Children = c1.Children.Select(c2 => new ItemModel
+                    SubItems = c1.Children.OrderBy(c2 => c2.Order).Select(c2 => new ItemModel
                     {
                         Id = c2.Id,
                         Name = c2.Name,
+                        Url = c2.Url,
                         Order = c2.Order,
-                        Children = c2.Children.Select(c3 => new ItemModel
+                        SubItems = c2.Children.OrderBy(c3 => c3.Order).Select(c3 => new ItemModel
                         {
                             Id = c3.Id,
                             Name = c3.Name,
+                            Url = c3.Url,
                             Order = c3.Order,
-                            //Children = c3.Children.Select(c4 => new ItemModel
-                            //{
-                            //    Id = c4.Id,
-                            //    Name = c4.Name,
-                            //    Order = c4.Order,
-                            //}).ToList(),
+                            SubItems = c3.Children.OrderBy(c4 => c4.Order).Select(c4 => new ItemModel
+                            {
+                                Id = c4.Id,
+                                Name = c4.Name,
+                                Url = c4.Url,
+                                Order = c4.Order,
+                            }).ToList(),
                         }).ToList()
                     }).ToList(),
                 }).ToList(),
@@ -161,6 +184,11 @@ public class ItemsController : ApiControllerBase
     /// <returns></returns>
     /// <exception cref="ApiException"></exception>
     [HttpPost]
+    [ProducesResponseType(typeof(ItemModel), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status406NotAcceptable)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> AddItem([FromBody] AddItemModel model)
     {
         Item? parentItem = null;
@@ -200,13 +228,30 @@ public class ItemsController : ApiControllerBase
 
                 var parentItemId = parentItem?.Id;
                 var languageCode = parentItem?.LanguageCode ?? model.LanguageCode;
+                int? order = null;
+
+                if (model.Order == 0)
+                {
+                    var subItems = dbContext.Items
+                        .Where(x => x.ParentId == parentItemId);
+
+                    if (subItems.Any())
+                    {
+                        order = subItems.Max(x => x.Order);
+                    }
+                    else
+                    {
+                        order = 1;
+                    }
+                }
 
                 var newItem = new Item
                 {
                     Id = Guid.NewGuid(),
                     LanguageCode = languageCode,
                     Name = model.Name,
-                    Order = model.Order,
+                    Url = model.Url,
+                    Order = order.HasValue ? order.Value : model.Order,
                     Level = (parentItem?.Level ?? 0) + 1,
                     ParentId = parentItemId,
                 };
@@ -228,7 +273,6 @@ public class ItemsController : ApiControllerBase
                     .Where(x => x.Id != addedEntity.Id)
                     .Where(x => x.Order > addedEntity.Order);
 
-
                 foreach (var sibiling in sibilings)
                 {
                     if (sibiling.Order < addedEntity.Order) { continue; }
@@ -243,11 +287,11 @@ public class ItemsController : ApiControllerBase
                     .Where(x => x.ParentId == parentItemId && x.LanguageCode == languageCode)
                     .OrderBy(x => x.Order);
 
-                var order = 1;
+                var reorder = 1;
                 foreach (var item in reorderCandidate)
                 {
-                    item.Order = order;
-                    order += 1;
+                    item.Order = reorder;
+                    reorder += 1;
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -256,6 +300,7 @@ public class ItemsController : ApiControllerBase
             }
             catch (Exception ex)
             {
+                logger.LogWarning(ex, ex.Message);
 
                 await transaction.RollbackAsync();
 
@@ -267,6 +312,7 @@ public class ItemsController : ApiControllerBase
         {
             Id = addedEntity.Id,
             Name = addedEntity.Name,
+            Url = addedEntity.Url,
             Order = addedEntity.Order,
         };
 
@@ -276,10 +322,16 @@ public class ItemsController : ApiControllerBase
     /// <summary>
     /// Update item
     /// </summary>
+    /// <param name="id"></param>
     /// <param name="model"></param>
     /// <returns></returns>
     /// <exception cref="ApiException"></exception>
     [HttpPut("{id:Guid}")]
+    [ProducesResponseType(typeof(ItemModel), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status406NotAcceptable)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateItemModel model)
     {
         Item? parentItem = null;
@@ -322,8 +374,10 @@ public class ItemsController : ApiControllerBase
                 var parentItemId = parentItem?.Id;
                 Guid? previousParentId = null;
                 var languageCode = parentItem?.LanguageCode ?? model.LanguageCode;
+                int? order = null;
 
-                updateItem = await dbContext.Items.Where(x => x.Id == model.Id).FirstOrDefaultAsync();
+                updateItem = await dbContext.Items
+                    .Where(x => x.Id == model.Id).FirstOrDefaultAsync();
 
                 if (updateItem == null)
                 {
@@ -335,9 +389,25 @@ public class ItemsController : ApiControllerBase
                     previousParentId = updateItem.ParentId;
                 }
 
+                if (model.Order == 0)
+                {
+                    var subItems = dbContext.Items
+                        .Where(x => x.ParentId == parentItemId);
+
+                    if (subItems.Any())
+                    {
+                        order = subItems.Max(x => x.Order);
+                    }
+                    else
+                    {
+                        order = 1;
+                    }
+                }
+
                 updateItem.LanguageCode = languageCode;
                 updateItem.Name = model.Name;
-                updateItem.Order = model.Order;
+                updateItem.Url = model.Url;
+                updateItem.Order = order.HasValue ? order.Value : model.Order;
                 updateItem.Level = (parentItem?.Level ?? 0) + 1;
                 updateItem.ParentId = parentItemId;
 
@@ -369,11 +439,11 @@ public class ItemsController : ApiControllerBase
                     .Where(x => x.ParentId == parentItemId && x.LanguageCode == languageCode)
                     .OrderBy(x => x.Order);
 
-                var order = 1;
+                var reorder = 1;
                 foreach (var item in reorderCandidate)
                 {
-                    item.Order = order;
-                    order += 1;
+                    item.Order = reorder;
+                    reorder += 1;
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -385,11 +455,11 @@ public class ItemsController : ApiControllerBase
                         .Where(x => x.ParentId == previousParentId.Value && x.LanguageCode == languageCode)
                         .OrderBy(x => x.Order);
 
-                    order = 1;
+                    reorder = 1;
                     foreach (var item in reorderCandidate)
                     {
-                        item.Order = order;
-                        order += 1;
+                        item.Order = reorder;
+                        reorder += 1;
                     }
 
                     await dbContext.SaveChangesAsync();
@@ -399,6 +469,7 @@ public class ItemsController : ApiControllerBase
             }
             catch (Exception ex)
             {
+                logger.LogWarning(ex, ex.Message);
 
                 await transaction.RollbackAsync();
 
@@ -410,14 +481,24 @@ public class ItemsController : ApiControllerBase
         {
             Id = updateItem.Id,
             Name = updateItem.Name,
+            Url = updateItem.Url,
             Order = updateItem.Order,
         };
 
         return Accepted($"items/{updateItem.Id}", updatedModel);
-
     }
 
+    /// <summary>
+    /// Delete item
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns></returns>
+    /// <exception cref="ApiException"></exception>
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status405MethodNotAllowed)]
+    [ProducesResponseType(typeof(ApiResponseModel<ErrorModel>), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Delete(Guid id)
     {
         using (var transaction = dbContext.Database.BeginTransaction())
@@ -429,7 +510,7 @@ public class ItemsController : ApiControllerBase
 
             if (deleteCandidate == null)
             {
-                throw new ApiException(StatusCodes.Status404NotFound);
+                throw new ApiException(StatusCodes.Status404NotFound, "Item does not find");
             }
 
             if (deleteCandidate.Children.Any())
@@ -466,6 +547,8 @@ public class ItemsController : ApiControllerBase
             }
             catch (Exception ex)
             {
+                logger.LogWarning(ex, ex.Message);
+
                 await transaction.RollbackAsync();
 
                 throw;
@@ -478,5 +561,6 @@ public class ItemsController : ApiControllerBase
     private readonly AppDbContext dbContext;
     private readonly IMapper mapper;
     private readonly TreeOptions treeOptions;
+    private readonly ILogger logger;
 }
 

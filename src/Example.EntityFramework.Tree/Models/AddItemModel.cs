@@ -8,7 +8,9 @@ public class AddItemModel
 
     public string Name { get; set; } = string.Empty;
 
-    public int Order { get; set; } = 1;
+    public string? Url { get; set; }
+
+    public int Order { get; set; } = 0;
 
     public Guid? ParentId { get; set; } = null;
 }

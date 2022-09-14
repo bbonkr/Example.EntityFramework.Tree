@@ -8,6 +8,8 @@ public class Item
 
     public string Name { get; set; } = string.Empty;
 
+    public string? Url { get; set; }
+
     public int Order { get; set; } = 1;
 
     public int Level { get; set; } = 1;
