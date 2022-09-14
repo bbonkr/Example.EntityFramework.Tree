@@ -16,9 +16,6 @@ services:
       - DOTNET_RUNNING_IN_CONTAINER=true
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Default=<database connection string here>
-    volumes:
-      - "${DESTINATION_PATH}:/app/images"
-      - "${THUMBNAIL_PATH}:/app/thumbnails"
     network_mode: bridge
     # networks:
     #   - app-network
