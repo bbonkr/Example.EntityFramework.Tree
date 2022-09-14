@@ -279,7 +279,7 @@ public class ItemsController : ApiControllerBase
     /// <param name="model"></param>
     /// <returns></returns>
     /// <exception cref="ApiException"></exception>
-    [HttpPatch("{id:Guid}")]
+    [HttpPut("{id:Guid}")]
     public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdateItemModel model)
     {
         Item? parentItem = null;
