@@ -22,6 +22,12 @@ namespace Example.EntityFramework.Tree.Data.EntityTypeConfigurations
                 .IsRequired()
                 .HasMaxLength(1000)
                 ;
+
+            builder.Property(x => x.Url)
+                .IsRequired(false)
+                .HasMaxLength(1000)
+                ;
+
             builder.Property(x => x.Order)
                 .IsRequired()
                 .HasDefaultValue(1)

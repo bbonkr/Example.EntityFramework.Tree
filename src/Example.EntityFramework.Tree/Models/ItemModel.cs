@@ -7,8 +7,10 @@ public class ItemModel
 
     public string Name { get; set; } = string.Empty;
 
+    public string? Url { get; set; }
+
     public int Order { get; set; } = 1;
 
-    public List<ItemModel> Children { get; set; } = new();
+    public List<ItemModel> SubItems { get; set; } = new();
 }
 
