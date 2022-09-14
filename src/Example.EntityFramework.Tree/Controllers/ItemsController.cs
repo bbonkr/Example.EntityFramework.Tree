@@ -295,6 +295,7 @@ public class ItemsController : ApiControllerBase
                 }
 
                 var parentItemId = parentItem?.Id;
+                Guid? previousParentId = null;
                 var languageCode = parentItem?.LanguageCode ?? model.LanguageCode;
 
                 updateItem = await dbContext.Items.Where(x => x.Id == model.Id).FirstOrDefaultAsync();
@@ -302,6 +303,11 @@ public class ItemsController : ApiControllerBase
                 if (updateItem == null)
                 {
                     throw new ApiException(StatusCodes.Status404NotFound);
+                }
+
+                if (updateItem.ParentId != parentItemId)
+                {
+                    previousParentId = updateItem.ParentId;
                 }
 
                 updateItem.LanguageCode = languageCode;
@@ -318,18 +324,18 @@ public class ItemsController : ApiControllerBase
 
                 await dbContext.SaveChangesAsync();
 
-                var sibilings = dbContext.Items
+                var siblings = dbContext.Items
                     .Where(x => x.ParentId == parentItemId)
                     .Where(x => x.LanguageCode == languageCode)
                     .Where(x => x.Id != updateItem.Id)
                     .Where(x => x.Order > updateItem.Order);
 
-                foreach (var sibiling in sibilings)
+                foreach (var sibling in siblings)
                 {
-                    if (sibiling.Order < updateItem.Order) { continue; }
-                    if (sibiling.Id == updateItem.Id) { continue; }
+                    if (sibling.Order < updateItem.Order) { continue; }
+                    if (sibling.Id == updateItem.Id) { continue; }
 
-                    sibiling.Order += 1;
+                    sibling.Order += 1;
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -346,6 +352,23 @@ public class ItemsController : ApiControllerBase
                 }
 
                 await dbContext.SaveChangesAsync();
+
+                if (previousParentId.HasValue)
+                {
+                    // parent item changed
+                    var reorderPreviousSiblings = dbContext.Items
+                        .Where(x => x.ParentId == previousParentId.Value && x.LanguageCode == languageCode)
+                        .OrderBy(x => x.Order);
+
+                    order = 1;
+                    foreach (var item in reorderCandidate)
+                    {
+                        item.Order = order;
+                        order += 1;
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                }
 
                 await transaction.CommitAsync();
             }
@@ -372,26 +395,59 @@ public class ItemsController : ApiControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var deleteCandidate = await dbContext.Items
-            .Include(x => x.Children)
-            .Where(x => x.Id == id)
-            .FirstOrDefaultAsync();
-
-        if (deleteCandidate == null)
+        using (var transaction = dbContext.Database.BeginTransaction())
         {
-            throw new ApiException(StatusCodes.Status404NotFound);
+            var deleteCandidate = await dbContext.Items
+                .Include(x => x.Children)
+                .Where(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+            if (deleteCandidate == null)
+            {
+                throw new ApiException(StatusCodes.Status404NotFound);
+            }
+
+            if (deleteCandidate.Children.Any())
+            {
+                throw new ApiException(StatusCodes.Status405MethodNotAllowed, "Item that has children items does not allow delete");
+            }
+
+            var parentId = deleteCandidate.ParentId;
+            var languageCode = deleteCandidate.LanguageCode;
+
+            try
+            {
+                dbContext.Items.Remove(deleteCandidate);
+
+                await dbContext.SaveChangesAsync();
+
+                if (parentId.HasValue)
+                {
+                    var reorderCandidate = dbContext.Items
+                       .Where(x => x.ParentId == parentId && x.LanguageCode == languageCode)
+                       .OrderBy(x => x.Order);
+
+                    var order = 1;
+                    foreach (var item in reorderCandidate)
+                    {
+                        item.Order = order;
+                        order += 1;
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+
+                throw;
+            }
+
+            return Accepted();
         }
-
-        if (deleteCandidate.Children.Any())
-        {
-            throw new ApiException(StatusCodes.Status405MethodNotAllowed, "Item that has children items does not allow delete");
-        }
-
-        dbContext.Items.Remove(deleteCandidate);
-
-        await dbContext.SaveChangesAsync();
-
-        return Accepted();
     }
 
     private readonly AppDbContext dbContext;
