@@ -28,7 +28,7 @@ public class ItemsController : ApiControllerBase
     }
 
     /// <summary>
-    /// Get all root items
+    /// Get all items
     /// </summary>
     /// <returns></returns>
     [HttpGet]
@@ -72,19 +72,48 @@ public class ItemsController : ApiControllerBase
                 }).ToList(),
 
             })
+            .AsNoTracking()
             .ToListAsync();
 
         return Ok(items);
     }
 
     /// <summary>
-    /// Get items
+    /// Get item information
+    /// </summary>
+    /// <param name="id"></param>
+    /// <param name="languageCode"></param>
+    /// <returns></returns>
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetItem([FromRoute] Guid id, string languageCode = "en")
+    {
+        var item = await dbContext.Items
+            .Include(x => x.Children.OrderBy(child => child.Order))
+                .ThenInclude(x => x.Children.OrderBy(child => child.Order))
+                    .ThenInclude(x => x.Children.OrderBy(child => child.Order))
+            .Where(x => x.Id == id)
+            .Where(x => x.LanguageCode == languageCode)
+            .OrderBy(x => x.Order)
+            .Select(x => new ItemModel
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Order = x.Order,
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        return Ok(item);
+    }
+
+    /// <summary>
+    /// Get sub items
     /// </summary>
     /// <param name="parentId"></param>
     /// <param name="languageCode"></param>
     /// <returns></returns>
-    [HttpGet("{parentId}")]
-    public async Task<IActionResult> GetItem([FromRoute] Guid parentId, string languageCode = "en")
+    [HttpGet("{parentId:guid}/subitems")]
+    public async Task<IActionResult> GetSubItems([FromRoute] Guid parentId, string languageCode = "en")
     {
         var items = await dbContext.Items
             .Include(x => x.Children.OrderBy(child => child.Order))
