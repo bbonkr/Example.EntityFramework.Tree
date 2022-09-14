@@ -19,5 +19,3 @@ $ cd src/Example.EntityFramework.Tree.Data
 $ dotnet ef migrations add "<Message: init db>" --startup-project ../Example.EntityFramework.Tree --project ../Example.EntityFramework.Tree.Data.SqlServer --context AppDbContext --json
 ```
 
-dotnet ef migrations add "init db" --startup-project ../Example.EntityFramework.Tree --project ../Example.EntityFramework.Tree.Data.SqlServer --context AppDbContext --json
-
