@@ -3,11 +3,13 @@ using AutoMapper;
 using Example.EntityFramework.Tree.Data;
 using Example.EntityFramework.Tree.Entities;
 using Example.EntityFramework.Tree.Models;
+using Example.EntityFramework.Tree.Options;
 using kr.bbon.AspNetCore;
 using kr.bbon.AspNetCore.Mvc;
 using kr.bbon.Core;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Example.EntityFramework.Tree.Controllers;
 
@@ -18,13 +20,11 @@ namespace Example.EntityFramework.Tree.Controllers;
 [Produces("application/json")]
 public class ItemsController : ApiControllerBase
 {
-    private const int MAX_LEVEL = 3;
-    private const int TOP_LEVEL_ITEM_LIMIT = 5;
-
-    public ItemsController(AppDbContext dbContext, IMapper mapper)
+    public ItemsController(AppDbContext dbContext, IMapper mapper, IOptionsMonitor<TreeOptions> treeOptionsAccessor)
     {
         this.dbContext = dbContext;
         this.mapper = mapper;
+        treeOptions = treeOptionsAccessor.CurrentValue ?? new TreeOptions();
     }
 
     /// <summary>
@@ -167,9 +167,9 @@ public class ItemsController : ApiControllerBase
                         .Where(x => x.ParentId == null && x.LanguageCode == model.LanguageCode)
                         .CountAsync();
 
-                    if (topLevelItems >= TOP_LEVEL_ITEM_LIMIT)
+                    if (topLevelItems >= treeOptions.TopLevelItemsCount)
                     {
-                        throw new ApiException(StatusCodes.Status404NotFound, $"Top level items must less than {TOP_LEVEL_ITEM_LIMIT + 1} items");
+                        throw new ApiException(StatusCodes.Status404NotFound, $"Top level items must less than {treeOptions.TopLevelItemsCount + 1} items");
                     }
                 }
 
@@ -186,9 +186,9 @@ public class ItemsController : ApiControllerBase
                     ParentId = parentItemId,
                 };
 
-                if (newItem.Level > MAX_LEVEL)
+                if (newItem.Level > treeOptions.MaxLevel)
                 {
-                    throw new ApiException(StatusCodes.Status406NotAcceptable, $"Item depth must be less than {MAX_LEVEL + 1}");
+                    throw new ApiException(StatusCodes.Status406NotAcceptable, $"Item depth must be less than {treeOptions.MaxLevel + 1}");
                 }
 
                 var added = dbContext.Items.Add(newItem);
@@ -288,9 +288,9 @@ public class ItemsController : ApiControllerBase
                         .Where(x => x.ParentId == null && x.LanguageCode == model.LanguageCode)
                         .CountAsync();
 
-                    if (topLevelItems >= TOP_LEVEL_ITEM_LIMIT)
+                    if (topLevelItems >= treeOptions.TopLevelItemsCount)
                     {
-                        throw new ApiException(StatusCodes.Status404NotFound, $"Top level items must less than {TOP_LEVEL_ITEM_LIMIT + 1} items");
+                        throw new ApiException(StatusCodes.Status404NotFound, $"Top level items must less than {treeOptions.TopLevelItemsCount + 1} items");
                     }
                 }
 
@@ -317,9 +317,9 @@ public class ItemsController : ApiControllerBase
                 updateItem.ParentId = parentItemId;
 
 
-                if (updateItem.Level > MAX_LEVEL)
+                if (updateItem.Level > treeOptions.MaxLevel)
                 {
-                    throw new ApiException(StatusCodes.Status406NotAcceptable, $"Item depth must be less than {MAX_LEVEL + 1}");
+                    throw new ApiException(StatusCodes.Status406NotAcceptable, $"Item depth must be less than {treeOptions.MaxLevel + 1}");
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -452,5 +452,6 @@ public class ItemsController : ApiControllerBase
 
     private readonly AppDbContext dbContext;
     private readonly IMapper mapper;
+    private readonly TreeOptions treeOptions;
 }
 

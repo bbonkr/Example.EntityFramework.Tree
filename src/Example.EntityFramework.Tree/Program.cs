@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Example.EntityFramework.Tree.Data;
 using Example.EntityFramework.Tree.Data.SqlServer;
+using Example.EntityFramework.Tree.Options;
 using kr.bbon.AspNetCore.Extensions.DependencyInjection;
 using kr.bbon.AspNetCore.Filters;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,13 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Services
+    .AddOptions<TreeOptions>()
+    .Configure<IConfiguration>((options, configuration) =>
+    {
+        configuration.GetSection(TreeOptions.Name).Bind(options);
+    });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {

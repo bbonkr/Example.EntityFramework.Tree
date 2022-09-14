@@ -16,6 +16,8 @@ services:
       - DOTNET_RUNNING_IN_CONTAINER=true
       - ASPNETCORE_URLS=http://+:5000
       - ConnectionStrings__Default=<database connection string here>
+      - Tree__MaxLevel=3
+      - Tree__TopLevelItemsCount=5
     network_mode: bridge
     # networks:
     #   - app-network
