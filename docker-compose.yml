@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile # 빌드 파일
-    image: bbonkr/Example.EntityFramework.Tree:latest # 도커 이미지 명칭
+    image: bbonkr/example.entityframework.tree:latest # 도커 이미지 명칭
     container_name: Example.EntityFramework.Tree # 컨테이너 명칭
     restart: always
     ports:
