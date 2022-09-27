@@ -4,7 +4,7 @@
 		<TargetFramework>net6.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>1.1.2</Version>
+		<Version>1.2.0</Version>
 	</PropertyGroup>
 	<PropertyGroup>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -26,16 +26,5 @@
 			<GlobalPropertiesToRemove>
 			</GlobalPropertiesToRemove>
 		</ProjectReference>
-	</ItemGroup>
-	<ItemGroup>
-		<None Remove="FluentValidation.AspNetCore" />
-		<None Remove="Extensions\" />
-		<None Remove="Extensions\DependencyInjection\" />
-		<None Remove="Infrastructure\" />
-	</ItemGroup>
-	<ItemGroup>
-		<Folder Include="Extensions\" />
-		<Folder Include="Extensions\DependencyInjection\" />
-		<Folder Include="Infrastructure\" />
 	</ItemGroup>
 </Project>
