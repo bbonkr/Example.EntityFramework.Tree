@@ -36,6 +36,7 @@ public class ItemsController : ApiControllerBase
     /// <summary>
     /// Get all items
     /// </summary>
+    /// <param name="languageCode"></param>
     /// <returns></returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<ItemModel>), StatusCodes.Status200OK)]
