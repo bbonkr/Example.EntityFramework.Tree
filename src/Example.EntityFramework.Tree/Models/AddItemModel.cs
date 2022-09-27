@@ -25,7 +25,7 @@ public class AddItemModelValidator : AbstractValidator<AddItemModel>
             .WithMessage(x => $"{nameof(AddItemModel.LanguageCode)} is required");
         RuleFor(x => x.Name).NotEmpty()
             .WithErrorCode("name_required")
-            .WithMessage(x => $"${nameof(AddItemModel.Name)} is required");
+            .WithMessage(x => $"{nameof(AddItemModel.Name)} is required");
         RuleFor(x => x.Order).GreaterThan(0)
             .WithErrorCode("order_invalid")
             .WithMessage(x => $"{nameof(AddItemModel.Order)} is greater than 0");
