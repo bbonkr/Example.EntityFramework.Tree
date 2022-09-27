@@ -19,10 +19,23 @@
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
 		<PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="11.0.0" />
+		<PackageReference Include="FluentValidation.AspNetCore" Version="11.2.2" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Example.EntityFramework.Tree.Data.SqlServer\Example.EntityFramework.Tree.Data.SqlServer.csproj">
-			<GlobalPropertiesToRemove></GlobalPropertiesToRemove>
+			<GlobalPropertiesToRemove>
+			</GlobalPropertiesToRemove>
 		</ProjectReference>
+	</ItemGroup>
+	<ItemGroup>
+		<None Remove="FluentValidation.AspNetCore" />
+		<None Remove="Extensions\" />
+		<None Remove="Extensions\DependencyInjection\" />
+		<None Remove="Infrastructure\" />
+	</ItemGroup>
+	<ItemGroup>
+		<Folder Include="Extensions\" />
+		<Folder Include="Extensions\DependencyInjection\" />
+		<Folder Include="Infrastructure\" />
 	</ItemGroup>
 </Project>
